@@ -6,6 +6,7 @@ This pipeline produces every result in the paper. All settings live in `config.p
 python run_experiments.py      # stage 1: tuning, refits, SHAP, LIME -> results/raw   (~60 min for 10 splits, resumable)
 python check_lr_signs.py       # follow-up: why LR signs flip (exploratory, all splits)
 python analyze.py              # stage 2: tables, hypothesis tests, figures -> results/tables, results/figures
+python stability_aware.py      # exploratory follow-up: averaging SHAP over refits, flagging unstable customers -> results/tables/X*
 python run_experiments.py --quick && python analyze.py --quick   # 1-minute smoke test -> results_quick/
 ```
 

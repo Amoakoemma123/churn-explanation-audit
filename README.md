@@ -18,11 +18,12 @@ cd pipeline
 python run_experiments.py               # IBM Telco: tuning, refits, SHAP, LIME (~1 h on 8 cores; resumable)
 python check_lr_signs.py
 python analyze.py                       # tables, hypothesis tests and figures -> results/
+python stability_aware.py               # exploratory: averaging over refits and flagging unstable customers
 ```
 
 For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same three commands (~13 h; output in
 `results_cell2cell/`). On Windows cmd, write `set "CHURN_DATASET=cell2cell"` with the quotes. Then
-`python ../manuscript/make_replication_figure.py` draws the two-dataset comparison figure.
+`python ../manuscript/make_replication_figure.py` and `python stability_aware.py --figure` draw the two-dataset figures.
 `python run_experiments.py --quick && python analyze.py --quick` is a short smoke test.
 
 Design, settings and output files are described in `pipeline/README.md`; every constant is in `pipeline/config.py`.
