@@ -1,0 +1,33 @@
+hypothesis,test,p,p_holm,reject_0.05
+H1,"AUC equivalence LR-RF (TOST, +-0.01)",0.0006552949928305685,0.00851883490679739,True
+H1,"AUC equivalence LR-XGB (TOST, +-0.01)",3.462269231391257e-05,0.0006232084616504263,True
+H1,"AUC equivalence RF-XGB (TOST, +-0.01)",0.00015762393197504831,0.0022067350476506764,True
+H2a,LR: local top-3 Jaccard boot < seed floor,5.959688138373337e-07,1.3111313904421342e-05,True
+H2b,LR: local top-3 Jaccard < global top-3 Jaccard,0.2657202155117543,0.628575906944022,False
+H2a,DT: local top-3 Jaccard boot < seed floor,2.4263438380786696e-08,6.308493979004541e-07,True
+H2b,DT: local top-3 Jaccard < global top-3 Jaccard,0.0024168642260282702,0.024168642260282702,True
+H2a,RF: local top-3 Jaccard boot < seed floor,6.868553827163952e-10,1.9918806098775462e-08,True
+H2b,RF: local top-3 Jaccard < global top-3 Jaccard,8.346206623431359e-05,0.0013081703431654297,True
+H2a,XGB: local top-3 Jaccard boot < seed floor,2.4117078381458746e-10,7.235123514437624e-09,True
+H2b,XGB: local top-3 Jaccard < global top-3 Jaccard,0.017860020336856026,0.13068592002214813,False
+H3,LR: sign agreement > top-3 membership,1.0267946841403254e-05,0.00019509098998666183,True
+H3,DT: sign agreement > top-3 membership,1.607953222827324e-07,3.698292412502845e-06,True
+H3,RF: sign agreement > top-3 membership,8.497808072360324e-11,2.6343205024317007e-09,True
+H3,XGB: sign agreement > top-3 membership,1.050237491032006e-08,2.835641225786416e-07,True
+H4,LR-RF: cross-model < within-model top-3 Jaccard,6.91060985964558e-11,2.2113951550865856e-09,True
+H4,LR-XGB: cross-model < within-model top-3 Jaccard,6.894783058399889e-08,1.6547479340159734e-06,True
+H4,RF-XGB: cross-model < within-model top-3 Jaccard,1.2974624480926323e-09,3.6328948546593707e-08,True
+H5a,LR: stability rises with distance from threshold,1.4487202094167965e-06,3.0423124397752726e-05,True
+H5a,DT: stability rises with distance from threshold,0.020486980681227708,0.13068592002214813,False
+H5a,RF: stability rises with distance from threshold,0.1571439767360055,0.628575906944022,False
+H5a,XGB: stability rises with distance from threshold,0.552309568359054,0.628575906944022,False
+H5b,LR: One year less stable than Month-to-month,0.1961916928883351,0.628575906944022,False
+H5b,LR: 13-48 less stable than 0-12,0.0008274948802639011,0.009929938563166813,True
+H5b,DT: One year less stable than Month-to-month,5.2914546337180135e-05,0.0008995472877320624,True
+H5b,DT: 13-48 less stable than 0-12,0.014520657780238682,0.13068592002214813,False
+H5b,RF: One year less stable than Month-to-month,2.5348408513686206e-06,5.069681702737241e-05,True
+H5b,RF: 13-48 less stable than 0-12,5.215080529462382e-08,1.3037701323655955e-06,True
+H5b,XGB: One year less stable than Month-to-month,0.031927245473163855,0.15963622736581928,False
+H5b,XGB: 13-48 less stable than 0-12,0.015023375001837612,0.13068592002214813,False
+H6,LR: dropping TotalCharges raises local stability,0.001042532933800589,0.011467862271806479,True
+H6,DT: dropping TotalCharges raises local stability,8.176064644783935e-05,0.0013081703431654297,True

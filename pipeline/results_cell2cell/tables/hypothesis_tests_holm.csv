@@ -1,0 +1,30 @@
+hypothesis,test,p,p_holm,reject_0.05
+H1,"AUC equivalence LR-RF (TOST, +-0.01)",0.9999999996929682,1.0,False
+H1,"AUC equivalence LR-XGB (TOST, +-0.01)",0.9999999999910558,1.0,False
+H1,"AUC equivalence RF-XGB (TOST, +-0.01)",0.19467645715306747,0.5840293714592024,False
+H2a,LR: local top-3 Jaccard boot < seed floor,7.703592959011492e-16,2.2340419581133328e-14,True
+H2b,LR: local top-3 Jaccard < global top-3 Jaccard,0.03315621305972195,0.19893727835833172,False
+H2a,DT: local top-3 Jaccard boot < seed floor,8.076617875719844e-12,1.857622111415564e-10,True
+H2b,DT: local top-3 Jaccard < global top-3 Jaccard,2.95314286537059e-07,5.315657157667062e-06,True
+H2a,RF: local top-3 Jaccard boot < seed floor,4.631161885361238e-13,1.2041020901939218e-11,True
+H2b,RF: local top-3 Jaccard < global top-3 Jaccard,0.00013721029155554834,0.0019209440817776766,True
+H2a,XGB: local top-3 Jaccard boot < seed floor,1.0125639208633973e-12,2.5314098021584934e-11,True
+H2b,XGB: local top-3 Jaccard < global top-3 Jaccard,0.0007500787809867305,0.009000945371840766,True
+H3,LR: sign agreement > top-3 membership,3.330250497510261e-13,8.991676343277706e-12,True
+H3,DT: sign agreement > top-3 membership,4.0047884498394253e-10,8.009576899678851e-09,True
+H3,RF: sign agreement > top-3 membership,7.25124568986004e-15,2.0303487931608115e-13,True
+H3,XGB: sign agreement > top-3 membership,4.152265631637018e-11,9.13498438960144e-10,True
+H4,LR-RF: cross-model < within-model top-3 Jaccard,1.3002225700414173e-12,3.120534168099402e-11,True
+H4,LR-XGB: cross-model < within-model top-3 Jaccard,5.812442590621306e-11,1.2206129440304742e-09,True
+H4,RF-XGB: cross-model < within-model top-3 Jaccard,1.5920089550737034e-07,3.0248170146400366e-06,True
+H5a,LR: stability rises with distance from threshold,0.0027607646988194027,0.024846882289374626,True
+H5a,DT: stability rises with distance from threshold,0.0009221621014053332,0.010143783115458665,True
+H5a,RF: stability rises with distance from threshold,0.00025051350314371653,0.003256675540868315,True
+H5a,XGB: stability rises with distance from threshold,2.6428825685937254e-05,0.0003964323852890588,True
+H5b,LR: 13-48 less stable than 0-12,0.0015679350381458121,0.01567935038145812,True
+H5b,DT: 13-48 less stable than 0-12,0.010951831341749844,0.07666281939224891,False
+H5b,RF: 13-48 less stable than 0-12,4.10084799516908e-06,6.561356792270528e-05,True
+H5b,XGB: 13-48 less stable than 0-12,9.965046989844397e-07,1.6940579882735475e-05,True
+H6,LR: dropping DroppedBlockedCalls raises local stability,0.08496517723072622,0.3398607089229049,False
+H6,DT: dropping DroppedBlockedCalls raises local stability,0.0033151816895112536,0.02652145351609003,True
+H7,LR: sign flips concentrate in VIF>10 features,0.052761130368462486,0.2638056518423124,False

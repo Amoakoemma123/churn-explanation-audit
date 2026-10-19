@@ -1,0 +1,7 @@
+data/
+__pycache__/
+pipeline/results*/raw/
+pipeline/results*/joblib_tmp/
+pipeline/results*/*.txt
+pipeline/results_quick*/
+pilot/results/

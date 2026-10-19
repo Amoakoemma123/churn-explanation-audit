@@ -1,0 +1,3 @@
+REPLICATION_PLAN.md frozen 2026-10-18T10:56:02Z
+SHA-256 d1bb988cfa3b6665e37c0833198f3cc25b997bf52a608de8479b72ac4af08197
+No Cell2Cell stability result had been computed or viewed at this time (only a timing benchmark and a smoke test in progress).
