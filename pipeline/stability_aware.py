@@ -87,11 +87,12 @@ def analyse():
     pd.DataFrame(rows).to_csv(C.TABLES / "X1_averaging_summary.csv", index=False)
     acc.assign(diff=acc.bagged_auc - acc.single_auc_mean).groupby("model")[["single_auc_mean", "bagged_auc", "diff"]] \
         .mean().reset_index().to_csv(C.TABLES / "X2_bagged_accuracy_summary.csv", index=False)
-    flag.groupby(["model", "r"])[["spearman", "auc_unstable", "share_unstable"]].mean().reset_index() \
-        .to_csv(C.TABLES / "X3_flagging_summary.csv", index=False)
-    print(pd.read_csv(C.TABLES / "X1_averaging_summary.csv").round(3).to_string(index=False))
-    print(pd.read_csv(C.TABLES / "X2_bagged_accuracy_summary.csv").round(4).to_string(index=False))
-    print(pd.read_csv(C.TABLES / "X3_flagging_summary.csv").round(3).to_string(index=False))
+    if not flag.empty:   # the --quick run has too few refits for any flagging split
+        flag.groupby(["model", "r"])[["spearman", "auc_unstable", "share_unstable"]].mean().reset_index() \
+            .to_csv(C.TABLES / "X3_flagging_summary.csv", index=False)
+    for name, digits in (("X1_averaging_summary", 3), ("X2_bagged_accuracy_summary", 4), ("X3_flagging_summary", 3)):
+        if (C.TABLES / f"{name}.csv").exists():
+            print(pd.read_csv(C.TABLES / f"{name}.csv").round(digits).to_string(index=False))
 
 
 def figure():
