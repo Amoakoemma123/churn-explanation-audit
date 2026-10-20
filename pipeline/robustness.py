@@ -6,6 +6,8 @@
     python robustness.py k5        # IBM Telco: all 32 tests recomputed on the first five outer splits only
     python robustness.py crosssplit  # averaged explanations across outer splits (different training customers)
     python robustness.py example     # IBM Telco: one customer's top-3 reasons across refits and models
+    python robustness.py bagfloor    # seed-only floor of an explanation averaged over 10 refits
+    python robustness.py nostatus    # Iranian Churn: bootstrap refits without Status (possible label leakage)
 
 The dataset is chosen with CHURN_DATASET as elsewhere; every check writes results*/tables/RB_*.csv.
 """
@@ -289,6 +291,52 @@ def example():
     print(out.to_string(index=False))
 
 
+# ---------------------------------------------------------------- bagged model's own seed floor
+def bagfloor():
+    """Seed-only floor of the averaged explanation: the 20 seed-only refits (same data) split into two groups of 10,
+    averaged, and compared. The averaged bootstrap explanation (m = 10) should be read against this floor."""
+    rows = []
+    for s in C.OUTER_SEEDS:
+        for m in MODELS:
+            A = np.load(C.RAW / f"s{s}_{m}_seed.npz")["A"].astype(np.float64)
+            g = A[:20].reshape(2, 10, *A.shape[1:]).mean(1)
+            rows.append(dict(split=s, model=m, bag_seed_floor=pairwise_jaccard_within(g, 3).mean()))
+    out = pd.DataFrame(rows)
+    out.to_csv(C.TABLES / "RB_bagfloor.csv", index=False)
+    print(out.groupby("model").bag_seed_floor.mean().round(3).to_string())
+
+
+# ---------------------------------------------------------------- Iranian Churn without Status (possible leakage)
+def nostatus():
+    """Bootstrap refits without `Status` (Iranian Churn only): accuracy and per-customer stability."""
+    import json
+    from sklearn.metrics import roc_auc_score
+    from models import fit_and_explain
+    assert C.DATASET == "iranian"
+    X, y, ids = load()
+    cols = [c for c in X.columns if c != "Status"]
+    rows = []
+    for s in C.OUTER_SEEDS:
+        sp = outer_split(X, y, ids, s)
+        Xtr, ytr = X.iloc[sp["train"]].reset_index(drop=True)[cols], y[sp["train"]]
+        Xte = X.iloc[sp["test"]].reset_index(drop=True)[cols]
+        Xexp = X.iloc[sp["explain"]].reset_index(drop=True)[cols]
+        for m in MODELS:
+            out = C.RAW / f"s{s}_{m}_boot_noStatus.npz"
+            if not out.exists():
+                params = json.loads((C.RAW / f"s{s}_{m}_tuning.json").read_text())["params"]
+                res = Parallel(n_jobs=3)(delayed(fit_and_explain)(m, params, r, True, Xtr, ytr, Xte, Xexp)
+                                         for r in range(C.B_BOOT))
+                np.savez_compressed(out, P_test=np.stack([q[0] for q in res]), A=np.stack([q[2] for q in res]))
+            z = np.load(out)
+            rows.append(dict(split=s, model=m, jac3=pairwise_jaccard_within(z["A"].astype(np.float64), 3).mean(),
+                             auc=np.mean([roc_auc_score(y[sp["test"]], p) for p in z["P_test"]])))
+        print(f"split {s} done", flush=True)
+    out = pd.DataFrame(rows)
+    out.to_csv(C.TABLES / "RB_nostatus.csv", index=False)
+    print(out.groupby("model")[["auc", "jac3"]].mean().round(3).to_string())
+
+
 # ---------------------------------------------------------------- IBM Telco: all tests with K = 5 (the original plan)
 def k5():
     import analyze
@@ -304,4 +352,5 @@ def k5():
 
 
 if __name__ == "__main__":
-    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "example": example}[sys.argv[1]]()
+    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "example": example,
+     "bagfloor": bagfloor, "nostatus": nostatus}[sys.argv[1]]()
