@@ -1,0 +1,13 @@
+model,rank,top3,refits,jac3,n_distinct,customer
+LR,1,"Contract, TotalCharges, tenure",38,0.7969796,4,273
+LR,2,"Contract, InternetService, tenure",7,0.7969796,4,273
+LR,3,"InternetService, TotalCharges, tenure",4,0.7969796,4,273
+DT,1,"Contract, InternetService, tenure",23,0.6395918,6,273
+DT,2,"Contract, InternetService, TotalCharges",11,0.6395918,6,273
+DT,3,"Contract, InternetService, MonthlyCharges",7,0.6395918,6,273
+RF,1,"Contract, InternetService, OnlineSecurity",22,0.6844898,4,273
+RF,2,"Contract, InternetService, PaymentMethod",21,0.6844898,4,273
+RF,3,"Contract, InternetService, tenure",5,0.6844898,4,273
+XGB,1,"Contract, InternetService, PaymentMethod",27,0.69265306,4,273
+XGB,2,"Contract, InternetService, tenure",15,0.69265306,4,273
+XGB,3,"Contract, InternetService, OnlineSecurity",6,0.69265306,4,273

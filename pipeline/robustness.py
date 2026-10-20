@@ -4,6 +4,8 @@
     python robustness.py sub80     # 50 refits on 80% subsamples without replacement (writes raw/*_sub80.npz)
     python robustness.py common    # all four models explained by one explainer on one scale (3 splits, 10 refits)
     python robustness.py k5        # IBM Telco: all 32 tests recomputed on the first five outer splits only
+    python robustness.py crosssplit  # averaged explanations across outer splits (different training customers)
+    python robustness.py example     # IBM Telco: one customer's top-3 reasons across refits and models
 
 The dataset is chosen with CHURN_DATASET as elsewhere; every check writes results*/tables/RB_*.csv.
 """
@@ -166,7 +168,10 @@ def sub80():
 
 
 # ---------------------------------------------------------------- one explainer, one scale, one value function
-COMMON_SPLITS, COMMON_R, COMMON_N, COMMON_BG = (101, 102, 103), 10, 100, 50
+# Reported in the paper: IBM Telco on all 10 splits, Iranian Churn on the first 3 (10 refits x 100 customers each);
+# Cell2Cell was not run. The full Iranian and Cell2Cell runs need several GB of free memory.
+COMMON_SPLITS = tuple(C.OUTER_SEEDS) if C.DATASET == "ibm" else tuple(C.OUTER_SEEDS[:3])
+COMMON_R, COMMON_N, COMMON_BG = 10, 100, 50
 
 
 def _codes(X, cats):
@@ -234,6 +239,56 @@ def common():
     print(out.groupby(["kind", "pair"]).mean(numeric_only=True).drop(columns="split").round(3).to_string())
 
 
+# ---------------------------------------------------------------- remedy across training populations
+def crosssplit():
+    """Customers explained in two outer splits were explained by models trained on different training sets (and
+    tuned separately). Compare single refits with explanations averaged over 10 refits (and over all 50) across
+    splits: this varies the training population, not only the bootstrap draw."""
+    sp = {s: np.load(C.RAW / f"s{s}_split.npz")["explain"] for s in C.OUTER_SEEDS}
+    rows = []
+    for m in MODELS:
+        A = {s: np.load(C.RAW / f"s{s}_{m}_boot.npz")["A"].astype(np.float64) for s in C.OUTER_SEEDS}
+        for s1, s2 in combinations(C.OUTER_SEEDS, 2):
+            common_ids, i1, i2 = np.intersect1d(sp[s1], sp[s2], return_indices=True)
+            if len(common_ids) == 0:
+                continue
+            a, b = A[s1][:, i1], A[s2][:, i2]                      # R x n x F for the shared customers
+            jac = lambda X, Y: ((topk_mask(X, 3) * topk_mask(Y, 3)).sum(-1) / (6 - (topk_mask(X, 3) * topk_mask(Y, 3)).sum(-1)))
+            single = np.mean([jac(a[r], b[r2]) for r in range(0, 50, 5) for r2 in range(0, 50, 5)], axis=0)
+            g1, g2 = a.reshape(5, 10, *a.shape[1:]).mean(1), b.reshape(5, 10, *b.shape[1:]).mean(1)
+            avg10 = np.mean([jac(g1[i], g2[j]) for i in range(5) for j in range(5)], axis=0)
+            avg50 = jac(a.mean(0), b.mean(0))
+            rows.append(dict(model=m, s1=s1, s2=s2, n=len(common_ids), single=single.mean(), avg10=avg10.mean(),
+                             avg50=avg50.mean(), w=len(common_ids)))
+    out = pd.DataFrame(rows)
+    out.to_csv(C.TABLES / "RB_crosssplit.csv", index=False)
+    summ = out.groupby("model").apply(lambda d: pd.Series({c: np.average(d[c], weights=d.w) for c in ("single", "avg10", "avg50")}
+                                                          | {"customer_pairs": d.n.sum(), "split_pairs": len(d)}))
+    summ.to_csv(C.TABLES / "RB_crosssplit_summary.csv")
+    print(summ.round(3).to_string())
+
+
+def example():
+    """Worked example: one IBM customer explained in split 101, top-3 reasons in five refits of each model."""
+    feats = list(np.load(C.RAW / f"s{C.OUTER_SEEDS[0]}_LR_boot.npz")["features"])
+    s = C.OUTER_SEEDS[0]
+    A = {m: np.load(C.RAW / f"s{s}_{m}_boot.npz")["A"].astype(np.float64) for m in MODELS}
+    jac = {m: pairwise_jaccard_within(A[m], 3) for m in MODELS}
+    # a customer close to the median instability of all four models (a typical, not an extreme, case)
+    score = sum(np.abs(jac[m] - np.median(jac[m])) for m in MODELS)
+    n = int(np.argmin(score))
+    rows = []
+    for m in MODELS:
+        tops = [tuple(sorted(feats[f] for f in np.argsort(-np.abs(A[m][r, n]))[:3])) for r in range(A[m].shape[0])]
+        vc = pd.Series(tops).value_counts()
+        for k, (sset, cnt) in enumerate(vc.head(3).items()):
+            rows.append(dict(model=m, rank=k + 1, top3=", ".join(sset), refits=int(cnt), jac3=jac[m][n],
+                             n_distinct=len(vc), customer=n))
+    out = pd.DataFrame(rows)
+    out.to_csv(C.TABLES / "RB_example.csv", index=False)
+    print(out.to_string(index=False))
+
+
 # ---------------------------------------------------------------- IBM Telco: all tests with K = 5 (the original plan)
 def k5():
     import analyze
@@ -249,4 +304,4 @@ def k5():
 
 
 if __name__ == "__main__":
-    {"ties": ties, "sub80": sub80, "common": common, "k5": k5}[sys.argv[1]]()
+    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "example": example}[sys.argv[1]]()
