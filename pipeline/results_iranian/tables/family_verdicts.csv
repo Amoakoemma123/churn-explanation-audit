@@ -1,0 +1,12 @@
+hypothesis,sum,count,verdict
+T-H1,1,3,partly supported
+T-H2a,4,4,supported
+T-H2b,2,4,partly supported
+T-H3,4,4,supported
+T-H4,3,3,supported
+T-H5a,1,4,partly supported
+T-H6,1,2,partly supported
+T-H7,0,1,not supported
+T-R1,4,4,supported
+T-R2,4,4,supported
+T-R3,1,4,partly supported

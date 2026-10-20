@@ -369,8 +369,8 @@ def main():
             tests.append(("H6", f"{m}: dropping {C.DROP[0]} raises local stability", p))
     pd.DataFrame(h6).to_csv(C.TABLES / "H6_collinearity.csv", index=False)
 
-    # ---------------- H7 (Cell2Cell only, confirmatory): LR sign flips concentrate in collinear features
-    if C.DATASET == "cell2cell":
+    # ---------------- H7 (Cell2Cell and Iranian Churn, confirmatory): LR sign flips concentrate in collinear features
+    if hasattr(C, "COLLINEAR"):
         h7 = []
         coll = [feats.index(f) for f in C.COLLINEAR]
         for s in S:

@@ -18,6 +18,8 @@ def load():
     df = pd.read_csv(C.DATA)
     if C.DATASET == "cell2cell":
         return _load_cell2cell(df)
+    if C.DATASET == "iranian":
+        return _load_iranian(df)
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"].str.strip().replace("", np.nan))
     # The 11 blanks are all tenure==0 customers who have not been billed yet
     assert (df.loc[df["TotalCharges"].isna(), "tenure"] == 0).all()
@@ -41,6 +43,19 @@ def _load_cell2cell(df):
         if c not in C.NUM:
             X[c] = X[c].astype(str)
     return X, y, ids
+
+
+def _load_iranian(df):
+    """UCI Iranian Churn (plan Section 2): names without spaces, Age dropped (one value per AgeGroup),
+    exact duplicate rows removed so that no record can fall in both parts of a split. All predictors are numeric."""
+    df.columns = ["".join(w.capitalize() if w.islower() else w for w in c.split()) for c in df.columns]
+    assert len(df) == 3150 and (df.groupby("AgeGroup").Age.nunique() == 1).all()
+    df = df.drop(columns="Age").drop_duplicates().reset_index(drop=True)
+    assert len(df) == 2850
+    y = df["Churn"].astype(int).to_numpy()
+    X = df.drop(columns="Churn").astype(float)
+    assert list(X.columns) == C.NUM
+    return X, y, np.arange(len(df))
 
 
 def outer_split(X, y, ids, seed):

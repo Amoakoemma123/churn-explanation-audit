@@ -5,9 +5,10 @@ Explanations for Telecom Churn Prediction*.
 
 The audit asks whether the SHAP and LIME reasons given for an individual customer's churn risk survive retraining on
 resampled data, a change of model class (logistic regression, decision tree, random forest, XGBoost) and a change of
-explainer. It runs on IBM Telco (primary analysis) and on Cell2Cell (a replication whose plan, in
+explainer. It runs on IBM Telco (primary analysis), on Cell2Cell (a replication whose plan, in
 `replication/REPLICATION_PLAN.md`, was frozen with a SHA-256 checksum before any Cell2Cell result was computed;
-see `replication/plan_frozen.txt`).
+see `replication/plan_frozen.txt`) and on Iranian Churn (a confirmatory test of the averaging and flagging remedies,
+plan in `replication_iranian/`).
 
 ## Reproduce
 
@@ -19,10 +20,12 @@ python run_experiments.py               # IBM Telco: tuning, refits, SHAP, LIME 
 python check_lr_signs.py
 python analyze.py                       # tables, hypothesis tests and figures -> results/
 python stability_aware.py               # exploratory: averaging over refits and flagging unstable customers
+python robustness.py ties               # robustness checks (also: sub80, common, k5)
 ```
 
-For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same three commands (~13 h; output in
-`results_cell2cell/`). On Windows cmd, write `set "CHURN_DATASET=cell2cell"` with the quotes. Then
+For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same commands (~13 h; output in
+`results_cell2cell/`); for the confirmatory third study, `CHURN_DATASET=iranian` (~30 min; plan in
+`replication_iranian/`). On Windows cmd, write `set "CHURN_DATASET=cell2cell"` with the quotes. Then
 `python ../manuscript/make_replication_figure.py` and `python stability_aware.py --figure` draw the two-dataset figures.
 `python run_experiments.py --quick && python analyze.py --quick` is a short smoke test.
 

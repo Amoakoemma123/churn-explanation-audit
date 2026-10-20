@@ -1,0 +1,3 @@
+REPLICATION_PLAN.md frozen 2026-10-19T23:26:51Z
+SHA-256 eb5232b4c8e51f23111de04996819e069c07d181e7fffbc7c12e37564fdfc0d1
+No model had been fitted on the Iranian Churn data at this time; only the data facts in Section 2 and 4 of the plan had been computed.

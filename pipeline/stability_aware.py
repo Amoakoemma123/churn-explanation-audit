@@ -13,7 +13,8 @@ flagged when they are not? Uses the existing bootstrap refits ("boot" condition)
 
     python stability_aware.py            # IBM Telco      -> results/tables/X*_*.csv
     CHURN_DATASET=cell2cell python ...   # Cell2Cell      -> results_cell2cell/tables/X*_*.csv
-    python stability_aware.py --figure   # both datasets  -> ../manuscript/figures/fig12_averaging.png
+    CHURN_DATASET=iranian python ...     # Iranian Churn  -> results_iranian/tables/X*_*.csv + family_tests_holm.csv
+    python stability_aware.py --figure   # all datasets   -> ../manuscript/figures/fig12_averaging.png
 """
 import sys
 from itertools import combinations
@@ -56,7 +57,7 @@ def bagged_auc(P, y, model):
 def analyse():
     _, y, _ = load()
     y = np.asarray(y)
-    avg, acc, flag = [], [], []
+    avg, acc, flag, n_unstable = [], [], [], {}
     for s in C.OUTER_SEEDS:
         test = np.load(C.RAW / f"s{s}_split.npz")["test"]
         for m in C.MODELS:
@@ -70,6 +71,7 @@ def analyse():
             for r in (r for r in R_FLAG if A.shape[0] - r >= 2):   # the --quick run has only 4 refits
                 est, truth = pairwise_jaccard_within(A[:r], 3), pairwise_jaccard_within(A[r:], 3)
                 unstable = truth < 0.5
+                n_unstable[(s, m, r)] = int(unstable.sum())
                 flag.append(dict(split=s, model=m, r=r, spearman=stats.spearmanr(est, truth).statistic,
                                  auc_unstable=roc_auc_score(unstable, -est) if 0 < unstable.sum() < len(est) else np.nan,
                                  share_unstable=unstable.mean()))
@@ -93,18 +95,51 @@ def analyse():
     for name, digits in (("X1_averaging_summary", 3), ("X2_bagged_accuracy_summary", 4), ("X3_flagging_summary", 3)):
         if (C.TABLES / f"{name}.csv").exists():
             print(pd.read_csv(C.TABLES / f"{name}.csv").round(digits).to_string(index=False))
+    if C.DATASET == "iranian":
+        confirm(avg, acc, flag, n_unstable)
+
+
+def confirm(avg, acc, flag, n_unstable):
+    """Third dataset (replication_iranian/REPLICATION_PLAN.md, Section 5): remedy tests T-R1 to T-R3, then one Holm
+    family with the 25 core tests that analyze.py wrote to hypothesis_tests_holm.csv."""
+    from analyze import holm, one_sample, paired
+    rows = []
+    for m in C.MODELS:
+        a = avg[avg.model == m].pivot(index="split", columns="m", values="local_top3_jaccard")
+        rows.append(("T-R1", f"{m}: averaging over 10 refits raises per-customer top-3 agreement",
+                     paired(a[10], a[1], "greater")[1]))
+        d = acc[acc.model == m].sort_values("split")
+        rows.append(("T-R2", f"{m}: bagged ROC-AUC not more than 0.01 below a single refit",
+                     one_sample(d.bagged_auc - d.single_auc_mean + 0.01, "greater")[1]))
+        f = flag[(flag.model == m) & (flag.r == 5)].sort_values("split")
+        keep = np.array([n_unstable[(s, m, 5)] >= 10 for s in f.split])
+        p = one_sample(f.auc_unstable.to_numpy()[keep] - 0.70, "greater")[1] if keep.sum() >= 3 else np.nan
+        rows.append(("T-R3", f"{m}: 5-refit flag ROC-AUC above 0.70 ({keep.sum()} evaluable splits)", p))
+    core = pd.read_csv(C.TABLES / "hypothesis_tests_holm.csv")[["hypothesis", "test", "p"]]
+    core["hypothesis"] = "T-" + core.hypothesis
+    assert len(core) == 25 and len(rows) == 12, (len(core), len(rows))
+    fam = pd.concat([core, pd.DataFrame(rows, columns=["hypothesis", "test", "p"])], ignore_index=True)
+    fam["p_holm"] = holm(fam.p.fillna(1.0))
+    fam["reject_0.05"] = fam.p_holm < 0.05
+    fam.to_csv(C.TABLES / "family_tests_holm.csv", index=False)
+    v = fam.groupby("hypothesis", sort=False)["reject_0.05"].agg(["sum", "count"])
+    v["verdict"] = np.where(v["sum"] == v["count"], "supported", np.where(v["sum"] > 0, "partly supported", "not supported"))
+    v.to_csv(C.TABLES / "family_verdicts.csv")
+    print(fam.round(4).to_string(index=False))
+    print(v.to_string())
 
 
 def figure():
-    """Per-customer top-3 stability against the number of averaged refits, both datasets."""
+    """Per-customer top-3 stability against the number of averaged refits, all three datasets."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from figures import COL, INK2, NAME, SURF
 
     here = Path(__file__).resolve().parent
-    sets = [("IBM Telco", here / "results" / "tables"), ("Cell2Cell", here / "results_cell2cell" / "tables")]
-    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.0), sharey=True, gridspec_kw={"wspace": 0.12})
+    sets = [("IBM Telco", here / "results" / "tables"), ("Cell2Cell", here / "results_cell2cell" / "tables"),
+            ("Iranian Churn (confirmatory)", here / "results_iranian" / "tables")]
+    fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.9), sharey=True, gridspec_kw={"wspace": 0.1})
     for ax, (title, T) in zip(axes, sets):
         d = pd.read_csv(T / "X1_averaging_summary.csv")
         floor = pd.read_csv(T / "stability_summary.csv").set_index(["condition", "model"])
@@ -114,7 +149,7 @@ def figure():
                         ms=4, lw=1.5, capsize=2, label=NAME[m])
             ax.axhline(floor.loc[("seed", m), "local_top3_jaccard_mean"], color=COL[m], ls=":", lw=1)
         ax.set_xscale("log"); ax.set_xticks(M_GROUP, [str(g) for g in M_GROUP]); ax.minorticks_off()
-        ax.set_title(title); ax.set_ylim(0.3, 1.02)
+        ax.set_title(title, fontsize=9); ax.set_ylim(0.3, 1.02)
     axes[0].set_ylabel("Per-customer top-3 Jaccard")
     axes[0].legend(fontsize=7.5, loc="lower right")
     fig.supxlabel("Bootstrap refits averaged per explanation (m)", fontsize=9, color=INK2, y=-0.04)

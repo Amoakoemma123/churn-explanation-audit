@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DATASET = os.environ.get("CHURN_DATASET", "ibm").strip().lower()   # cmd's "set X=y && ..." keeps a trailing space
-assert DATASET in ("ibm", "cell2cell"), DATASET
+assert DATASET in ("ibm", "cell2cell", "iranian"), DATASET
 
 # Outer splits. The pilot used 42, so it is excluded (pilot-derived hypotheses are tested on new splits).
 OUTER_SEEDS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110]  # 106-110 added to resolve borderline tests
@@ -46,7 +46,7 @@ if DATASET == "ibm":
     DROP = ["TotalCharges"]
     SEGMENTS = [("Contract", "contract"), ("Tenure", "tenure_band")]   # (label, column in the customer table)
     CONTRASTS = [("Contract", "One year", "Month-to-month"), ("Tenure", "13-48", "0-12")]
-else:
+elif DATASET == "cell2cell":
     DATA = ROOT.parent / "data" / "cell2celltrain.csv"
     DATA_SHA256 = "3f6b8ff0b8e8f5975aa0de9f1f54967e6c8cb867a9bec6cbb64f4c8990f9a645"
     RESULTS = ROOT / "results_cell2cell"
@@ -65,6 +65,19 @@ else:
     CONTRASTS = [("Tenure", "13-48", "0-12")]
     # R-H7: numeric features with VIF > 10 against all other predictors (fixed before any result; plan Section 4)
     COLLINEAR = ["DroppedBlockedCalls", "BlockedCalls", "DroppedCalls", "RetentionCalls", "MonthlyRevenue"]
+else:   # third dataset: confirmatory study of the remedy (plan: replication_iranian/REPLICATION_PLAN.md)
+    DATA = ROOT.parent / "data" / "iranian_churn.csv"
+    DATA_SHA256 = "90d5fb6bd1630cd4de4b4d28fcf8b4cb92a8f6ab7484605b0799d47386f7dbe1"
+    RESULTS = ROOT / "results_iranian"
+    NUM = ["CallFailure", "Complains", "SubscriptionLength", "ChargeAmount", "SecondsOfUse", "FrequencyOfUse",
+           "FrequencyOfSMS", "DistinctCalledNumbers", "AgeGroup", "TariffPlan", "Status", "CustomerValue"]
+    TENURE = "SubscriptionLength"
+    IMPUTE = False                               # no missing values
+    ABLATION = "boot_noCV"                       # T-H6 condition
+    DROP = ["CustomerValue"]                     # highest VIF (50.0), "the calculated value of the customer"
+    SEGMENTS = [("Tenure", "tenure_band")]       # descriptive only: about 4 test churners per split in 0-12 months
+    CONTRASTS = []                               # so the tenure contrast (H5b) is not tested (plan Section 4)
+    COLLINEAR = ["CustomerValue", "FrequencyOfSMS", "SecondsOfUse", "FrequencyOfUse"]   # T-H7: VIF > 10
 
 # Conditions: name -> (bootstrap?, features dropped)
 CONDITIONS = {"seed": (False, []), "boot": (True, []), ABLATION: (True, DROP)}

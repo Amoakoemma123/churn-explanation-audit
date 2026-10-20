@@ -1,0 +1,13 @@
+,LR,DT,RF,XGB
+CallFailure,4,8,7,5
+Complains,6,2,2,3
+SubscriptionLength,9,4,6,6
+ChargeAmount,7,11,11,11
+SecondsOfUse,5,3,4,4
+FrequencyOfUse,2,5,3,2
+FrequencyOfSMS,1,10,8,8
+DistinctCalledNumbers,10,6,9,9
+AgeGroup,12,9,10,10
+TariffPlan,11,12,12,12
+Status,8,1,1,1
+CustomerValue,3,7,5,7

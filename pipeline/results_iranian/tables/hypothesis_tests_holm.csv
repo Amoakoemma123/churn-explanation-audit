@@ -1,0 +1,26 @@
+hypothesis,test,p,p_holm,reject_0.05
+H1,"AUC equivalence LR-RF (TOST, +-0.01)",0.9999821081650627,1.0,False
+H1,"AUC equivalence LR-XGB (TOST, +-0.01)",0.9999825825582934,1.0,False
+H1,"AUC equivalence RF-XGB (TOST, +-0.01)",4.1067496640012635e-06,5.749449529601769e-05,True
+H2a,LR: local top-3 Jaccard boot < seed floor,1.2836457219307535e-06,2.0538331550892056e-05,True
+H2b,LR: local top-3 Jaccard < global top-3 Jaccard,0.000865890021250201,0.010390680255002413,True
+H2a,DT: local top-3 Jaccard boot < seed floor,5.9009633844965815e-09,1.0621734092093847e-07,True
+H2b,DT: local top-3 Jaccard < global top-3 Jaccard,6.121518338115343e-05,0.0007957973839549946,True
+H2a,RF: local top-3 Jaccard boot < seed floor,9.897630095732231e-11,2.2764549220184133e-09,True
+H2b,RF: local top-3 Jaccard < global top-3 Jaccard,0.029030745488828266,0.20321521842179785,False
+H2a,XGB: local top-3 Jaccard boot < seed floor,1.8742204823140023e-08,3.186174819933804e-07,True
+H2b,XGB: local top-3 Jaccard < global top-3 Jaccard,0.08359180556930243,0.5015508334158145,False
+H3,LR: sign agreement > top-3 membership,1.7054681162874347e-06,2.558202174431152e-05,True
+H3,DT: sign agreement > top-3 membership,2.4605773111019754e-09,5.1672123533141487e-08,True
+H3,RF: sign agreement > top-3 membership,3.934275149417377e-11,9.442260358601706e-10,True
+H3,XGB: sign agreement > top-3 membership,4.30199989480586e-09,8.173799800131135e-08,True
+H4,LR-RF: cross-model < within-model top-3 Jaccard,1.4743304789172038e-11,3.68582619729301e-10,True
+H4,LR-XGB: cross-model < within-model top-3 Jaccard,4.683545698594297e-10,1.0303800536907452e-08,True
+H4,RF-XGB: cross-model < within-model top-3 Jaccard,3.945588422276717e-09,7.891176844553434e-08,True
+H5a,LR: stability rises with distance from threshold,0.17723246466082576,0.708929858643303,False
+H5a,DT: stability rises with distance from threshold,0.002906160303505146,0.02906160303505146,True
+H5a,RF: stability rises with distance from threshold,0.10687255217920172,0.5343627608960086,False
+H5a,XGB: stability rises with distance from threshold,0.013341171929125359,0.10672937543300287,False
+H6,LR: dropping CustomerValue raises local stability,0.5958577594186982,1.0,False
+H6,DT: dropping CustomerValue raises local stability,0.0023427201245498196,0.025769921370048014,True
+H7,LR: sign flips concentrate in VIF>10 features,0.007286468694125452,0.06557821824712907,False

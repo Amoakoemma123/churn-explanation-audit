@@ -1,0 +1,38 @@
+hypothesis,test,p,p_holm,reject_0.05
+T-H1,"AUC equivalence LR-RF (TOST, +-0.01)",0.9999821081650628,1.0,False
+T-H1,"AUC equivalence LR-XGB (TOST, +-0.01)",0.9999825825582934,1.0,False
+T-H1,"AUC equivalence RF-XGB (TOST, +-0.01)",4.106749664001264e-06,7.802824361602402e-05,True
+T-H2a,LR: local top-3 Jaccard boot < seed floor,1.2836457219307535e-06,2.6956560160545825e-05,True
+T-H2b,LR: local top-3 Jaccard < global top-3 Jaccard,0.0008658900212502,0.012988350318752999,True
+T-H2a,DT: local top-3 Jaccard boot < seed floor,5.900963384496581e-09,1.534250479969111e-07,True
+T-H2b,DT: local top-3 Jaccard < global top-3 Jaccard,6.121518338115343e-05,0.0010406581174796084,True
+T-H2a,RF: local top-3 Jaccard boot < seed floor,9.897630095732232e-11,3.3651942325489588e-09,True
+T-H2b,RF: local top-3 Jaccard < global top-3 Jaccard,0.0290307454888282,0.2322459639106256,False
+T-H2a,XGB: local top-3 Jaccard boot < seed floor,1.8742204823140023e-08,4.4981291575536055e-07,True
+T-H2b,XGB: local top-3 Jaccard < global top-3 Jaccard,0.0835918055693024,0.5851426389851169,False
+T-H3,LR: sign agreement > top-3 membership,1.7054681162874349e-06,3.41093623257487e-05,True
+T-H3,DT: sign agreement > top-3 membership,2.4605773111019754e-09,7.381731933305926e-08,True
+T-H3,RF: sign agreement > top-3 membership,3.934275149417377e-11,1.376996302296082e-09,True
+T-H3,XGB: sign agreement > top-3 membership,4.30199989480586e-09,1.1615399715975822e-07,True
+T-H4,LR-RF: cross-model < within-model top-3 Jaccard,1.4743304789172038e-11,5.307589724101934e-10,True
+T-H4,LR-XGB: cross-model < within-model top-3 Jaccard,4.683545698594297e-10,1.545570080536118e-08,True
+T-H4,RF-XGB: cross-model < within-model top-3 Jaccard,3.945588422276717e-09,1.1047647582374808e-07,True
+T-H5a,LR: stability rises with distance from threshold,0.1772324646608257,0.8861623233041285,False
+T-H5a,DT: stability rises with distance from threshold,0.0029061603035051,0.0377800839455663,True
+T-H5a,RF: stability rises with distance from threshold,0.1068725521792017,0.6412353130752102,False
+T-H5a,XGB: stability rises with distance from threshold,0.0133411719291253,0.133411719291253,False
+T-H6,LR: dropping CustomerValue raises local stability,0.5958577594186982,1.0,False
+T-H6,DT: dropping CustomerValue raises local stability,0.0023427201245498,0.0327980817436972,True
+T-H7,LR: sign flips concentrate in VIF>10 features,0.0072864686941254,0.0874376243295048,False
+T-R1,LR: averaging over 10 refits raises per-customer top-3 agreement,1.1196438530267837e-05,0.00020153589354482106,True
+T-R2,LR: bagged ROC-AUC not more than 0.01 below a single refit,8.269217868718214e-13,3.0596106114257396e-11,True
+T-R3,LR: 5-refit flag ROC-AUC above 0.70 (2 evaluable splits),,1.0,False
+T-R1,DT: averaging over 10 refits raises per-customer top-3 agreement,7.078531093100961e-08,1.6280621514132212e-06,True
+T-R2,DT: bagged ROC-AUC not more than 0.01 below a single refit,4.0759721497876995e-07,8.967138729532938e-06,True
+T-R3,DT: 5-refit flag ROC-AUC above 0.70 (10 evaluable splits),0.010198699614913811,0.11218569576405192,False
+T-R1,RF: averaging over 10 refits raises per-customer top-3 agreement,3.1881771249558765e-09,9.245713662372042e-08,True
+T-R2,RF: bagged ROC-AUC not more than 0.01 below a single refit,8.343738719172973e-10,2.6699963901353513e-08,True
+T-R3,RF: 5-refit flag ROC-AUC above 0.70 (3 evaluable splits),0.02230833096361513,0.20077497867253616,False
+T-R1,XGB: averaging over 10 refits raises per-customer top-3 agreement,9.428971219368074e-09,2.3572428048420184e-07,True
+T-R2,XGB: bagged ROC-AUC not more than 0.01 below a single refit,1.3931278008919828e-09,4.318696182765147e-08,True
+T-R3,XGB: 5-refit flag ROC-AUC above 0.70 (9 evaluable splits),7.155759290202222e-05,0.0011449214864323555,True
