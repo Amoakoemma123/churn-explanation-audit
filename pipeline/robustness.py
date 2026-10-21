@@ -270,6 +270,28 @@ def crosssplit():
     print(summ.round(3).to_string())
 
 
+def crosssplit_ci():
+    """Corrected 95% CIs for the cross-split gains (review round 6), from RB_crosssplit.csv (no refitting).
+    The 45 split pairs are not independent, so each outer split s gets one value: the customer-weighted mean gain
+    over the 9 pairs that contain s. The K = 10 per-split values get the Nadeau-Bengio corrected CI (analyze.ci95);
+    each pair enters two splits' values, so the interval is approximate."""
+    from analyze import ci95
+    out = pd.read_csv(C.TABLES / "RB_crosssplit.csv")
+    rows = []
+    for m, d in out.groupby("model"):
+        for gain in ("avg10", "avg50"):
+            vals = []
+            for s in C.OUTER_SEEDS:
+                e = d[(d.s1 == s) | (d.s2 == s)]
+                vals.append(np.average(e[gain] - e.single, weights=e.w))
+            lo, hi = ci95(vals)
+            rows.append(dict(model=m, comparison=f"{gain}-single", gain_mean=np.mean(vals), ci_lo=lo, ci_hi=hi,
+                             K=len(vals), customer_pairs=int(d.n.sum())))
+    res = pd.DataFrame(rows)
+    res.to_csv(C.TABLES / "RB_crosssplit_ci.csv", index=False)
+    print(res.round(3).to_string(index=False))
+
+
 def example():
     """Worked example: one IBM customer explained in split 101, top-3 reasons in five refits of each model."""
     feats = list(np.load(C.RAW / f"s{C.OUTER_SEEDS[0]}_LR_boot.npz")["features"])
@@ -329,8 +351,10 @@ def nostatus():
                                          for r in range(C.B_BOOT))
                 np.savez_compressed(out, P_test=np.stack([q[0] for q in res]), A=np.stack([q[2] for q in res]))
             z = np.load(out)
+            w = np.load(C.RAW / f"s{s}_{m}_boot.npz")             # same bootstrap refits with Status, for a like-for-like AUC
             rows.append(dict(split=s, model=m, jac3=pairwise_jaccard_within(z["A"].astype(np.float64), 3).mean(),
-                             auc=np.mean([roc_auc_score(y[sp["test"]], p) for p in z["P_test"]])))
+                             auc=np.mean([roc_auc_score(y[sp["test"]], p) for p in z["P_test"]]),
+                             auc_with=np.mean([roc_auc_score(y[sp["test"]], p) for p in w["P_test"]])))
         print(f"split {s} done", flush=True)
     out = pd.DataFrame(rows)
     out.to_csv(C.TABLES / "RB_nostatus.csv", index=False)
@@ -352,5 +376,5 @@ def k5():
 
 
 if __name__ == "__main__":
-    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "example": example,
+    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "crosssplit_ci": crosssplit_ci, "example": example,
      "bagfloor": bagfloor, "nostatus": nostatus}[sys.argv[1]]()

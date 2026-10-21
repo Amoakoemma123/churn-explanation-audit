@@ -1,0 +1,5 @@
+model,share_below_global_inclusion@3,share_below_global_inclusion@5
+LR,0.7327999999999999,0.7188000000000001
+DT,0.9942,0.999
+RF,0.9014,0.913
+XGB,0.8922000000000001,0.8868

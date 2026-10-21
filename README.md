@@ -1,13 +1,13 @@
-# Stable Rankings, Unstable Reasons
+# Unstable Reasons, Stable Directions
 
-Code and result tables for *Stable Rankings, Unstable Reasons: A Two-Dataset Audit of Per-Customer SHAP and LIME
-Explanations for Telecom Churn Prediction*.
+Code and result tables for *Unstable Reasons, Stable Directions: A Three-Dataset Audit of SHAP and LIME Explanations
+for Telecom Churn Prediction*.
 
 The audit asks whether the SHAP and LIME reasons given for an individual customer's churn risk survive retraining on
 resampled data, a change of model class (logistic regression, decision tree, random forest, XGBoost) and a change of
 explainer. It runs on IBM Telco (primary analysis), on Cell2Cell (a replication whose plan, in
 `replication/REPLICATION_PLAN.md`, was frozen with a SHA-256 checksum before any Cell2Cell result was computed;
-see `replication/plan_frozen.txt`) and on Iranian Churn (a confirmatory test of the averaging and flagging remedies,
+see `replication/plan_frozen.txt`) and on Iranian Churn (a planned test of the averaging and flagging remedies,
 plan in `replication_iranian/`).
 
 ## Reproduce
@@ -20,7 +20,10 @@ python run_experiments.py               # IBM Telco: tuning, refits, SHAP, LIME 
 python check_lr_signs.py
 python analyze.py                       # tables, hypothesis tests and figures -> results/
 python stability_aware.py               # exploratory: averaging over refits and flagging unstable customers
-python robustness.py ties               # robustness checks (also: sub80, common, k5)
+python robustness.py ties               # robustness checks (also: sub80, common, k5, crosssplit, ...)
+python matched_metric.py                # the same stability metrics at the global and per-customer level
+python equal_compute.py                 # averaging vs one model of equal computing cost (IBM, Iranian)
+python profit.py                        # simulated retention campaign: profit and stability of actions
 ```
 
 For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same commands (~13 h; output in

@@ -30,10 +30,11 @@ MEAS = [("Global top-5 inclusion", "#0b0b0b", "s"),
 def values(T):
     s = pd.read_csv(T / "stability_by_split.csv").groupby(["model", "condition"]).mean(numeric_only=True)
     h4 = pd.read_csv(T / "H4_cross_model.csv")
+    ho = pd.read_csv(T / "matched_metric_summary.csv").set_index(["model", "k", "metric"])   # held-out inclusion
     out = {}
     for m in MODELS:
         between = h4[h4.pair.str.split("-").apply(lambda p: m in p)].between.mean()
-        out[m] = [s.loc[(m, "boot"), "global_top5_inclusion"], s.loc[(m, "seed"), "local_top3_jaccard"],
+        out[m] = [ho.loc[(m, 5, "inclusion_ho"), "global_mean"], s.loc[(m, "seed"), "local_top3_jaccard"],
                   s.loc[(m, "boot"), "local_top3_jaccard"], between]
     chance = pd.read_csv(T / "chance_baselines.csv").set_index("k").loc[3, "chance_jaccard"]
     return out, chance
