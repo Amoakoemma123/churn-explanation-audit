@@ -3,6 +3,7 @@
     python robustness.py ties      # near-ties, magnitude overlap, personalisation, chance correction, retention actions
     python robustness.py sub80     # 50 refits on 80% subsamples without replacement (writes raw/*_sub80.npz)
     python robustness.py common    # all four models explained by one explainer on one scale (3 splits, 10 refits)
+    python robustness.py common_gaps  # between-vs-within gaps of the common-explainer check, with corrected CIs
     python robustness.py k5        # IBM Telco: all 32 tests recomputed on the first five outer splits only
     python robustness.py crosssplit  # averaged explanations across outer splits (different training customers)
     python robustness.py example     # IBM Telco: one customer's top-3 reasons across refits and models
@@ -241,6 +242,26 @@ def common():
     print(out.groupby(["kind", "pair"]).mean(numeric_only=True).drop(columns="split").round(3).to_string())
 
 
+def common_gaps():
+    """Per split: min(within a, within b) - between(a, b) under the common explainer, with corrected 95% CIs
+    (review round 13); plus logistic regression with the common against its own background."""
+    from analyze import ci95
+    t = pd.read_csv(C.TABLES / "RB_common_explainer.csv")
+    w = t[t.kind == "within"].pivot(index="split", columns="pair", values="common")
+    b = t[t.kind == "between"].pivot(index="split", columns="pair", values="common")
+    nat = t[t.kind == "within"].pivot(index="split", columns="pair", values="native")
+    rows = []
+    for a, c in (("LR", "RF"), ("LR", "XGB"), ("RF", "XGB"), ("DT", "RF"), ("DT", "XGB"), ("LR", "DT")):
+        g = np.minimum(w[a], w[c]) - b[f"{a}-{c}"]
+        lo, hi = ci95(g)
+        rows.append(dict(pair=f"{a}-{c}", splits=len(g), gap=g.mean(), lo=lo, hi=hi, positive=int((g > 0).sum())))
+    rows.append(dict(pair="LR common-native", splits=len(w), gap=(w.LR - nat.LR).mean(), lo=np.nan, hi=np.nan,
+                     positive=int((w.LR > nat.LR).sum())))
+    out = pd.DataFrame(rows)
+    out.to_csv(C.TABLES / "RB_common_gaps.csv", index=False)
+    print(out.round(3).to_string())
+
+
 # ---------------------------------------------------------------- remedy across training populations
 def crosssplit():
     """Customers explained in two outer splits were explained by models trained on different training sets (and
@@ -376,5 +397,5 @@ def k5():
 
 
 if __name__ == "__main__":
-    {"ties": ties, "sub80": sub80, "common": common, "k5": k5, "crosssplit": crosssplit, "crosssplit_ci": crosssplit_ci, "example": example,
+    {"ties": ties, "sub80": sub80, "common": common, "common_gaps": common_gaps, "k5": k5, "crosssplit": crosssplit, "crosssplit_ci": crosssplit_ci, "example": example,
      "bagfloor": bagfloor, "nostatus": nostatus}[sys.argv[1]]()
