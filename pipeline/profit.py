@@ -44,6 +44,7 @@ GRID = [(clv, g) for clv in (100.0, 200.0, 500.0) for g in (0.1, 0.3, 0.5)]
 KAPPAS = (0.1, 0.25, 0.5)
 TAUS = (0.7, 0.8, 0.9)
 M_AVG = 10
+N_PERM = 20
 BUDGET = 0.10
 HALF = 25
 
@@ -69,11 +70,13 @@ def to_prob(s, model):
     return 1 / (1 + np.exp(-s)) if model in LOGIT_SPACE else s
 
 
-def contact(prob, campaign, clv=CLV, gamma=GAMMA):
-    """Boolean contact mask from predicted churn probabilities."""
+def contact(prob, campaign, clv=CLV, gamma=GAMMA, tie=None):
+    """Boolean contact mask from predicted churn probabilities. `tie` = random keys that break ties in the top-10%
+    campaign (round 14); None keeps the row order, as in round 13, which favours tied leaf probabilities."""
     if campaign == "top-10%":
         m = np.zeros(len(prob), bool)
-        m[np.argsort(-prob, kind="stable")[:int(round(BUDGET * len(prob)))]] = True
+        order = np.argsort(-prob, kind="stable") if tie is None else np.lexsort((tie, -prob))
+        m[order[:int(round(BUDGET * len(prob)))]] = True
         return m
     return prob >= breakeven(clv, gamma)
 
@@ -118,25 +121,32 @@ def main():
             labels = np.unique(act)
             L = actions(A, act)
             agree1 = pair_agree(L)
-            L10 = actions(A[:G * M_AVG].reshape(G, M_AVG, *A.shape[1:]).mean(1), act)
-            agree10 = pair_agree(L10)
+            rng = np.random.default_rng(1000 + s)
+            perms = [rng.permutation(R) for _ in range(N_PERM)]
+            L10s = [actions(A[q[:G * M_AVG]].reshape(G, M_AVG, *A.shape[1:]).mean(1), act) for q in perms]
+            L10 = np.concatenate(L10s)                                     # N_PERM x G averaged explanations
+            agree10 = np.mean([pair_agree(x) for x in L10s], axis=0)       # pairs of disjoint groups only
             ref = actions(A[HALF:].mean(0)[None], act)[0]                     # held-out reference action
             mis1 = (L[:HALF] != ref).mean(0)                                   # per customer, over refits 0-24
-            mis10 = np.mean([actions(A[g * M_AVG:(g + 1) * M_AVG].mean(0)[None], act)[0] != ref
-                             for g in range(HALF // M_AVG)], axis=0)
+            mis10 = np.mean([actions(A[q[g * M_AVG:(g + 1) * M_AVG]].mean(0)[None], act)[0] != ref
+                             for q in (rng.permutation(HALF) for _ in range(N_PERM)) for g in range(HALF // M_AVG)], axis=0)
+            ref50 = actions(A.mean(0)[None], act)[0]                         # consensus of all 50 refits
             value = prob_e * GAMMA * CLV
             for camp in CAMPAIGNS:
-                masks = np.stack([contact(P[r], camp) for r in range(R)])
-                gmasks = np.stack([contact(g, camp) for g in groups])
+                tie = np.random.default_rng(s * 100 + MODELS.index(m)).random(len(yt))
+                masks = np.stack([contact(P[r], camp, tie=tie) for r in range(R)])
+                gmasks = np.stack([contact(g, camp, tie=tie) for g in groups])
+                p_single_idx = np.mean([profit(contact(P[r], camp), yt) for r in range(R)])
+                p_bag10_idx = np.mean([profit(contact(g, camp), yt) for g in groups])
                 p_single = np.mean([profit(mk, yt) for mk in masks])
                 p_bag10 = np.mean([profit(mk, yt) for mk in gmasks])
-                c50 = contact(prob50, camp)
+                c50 = contact(prob50, camp, tie=tie)
                 cut = prob50[c50].min() if c50.any() else np.inf
                 hit = prob_e >= cut                                            # contacted explained customers
                 churn_hit = hit & (ye == 1)
                 churners_per_cust = yt[c50].sum() / len(yt)
                 r = dict(split=s, model=m, campaign=camp, contacted=c50.mean(), profit_single=p_single,
-                         profit_bag10=p_bag10, gain10=p_bag10 - p_single,
+                         profit_bag10=p_bag10, gain10=p_bag10 - p_single, gain10_index_ties=p_bag10_idx - p_single_idx,
                          target_j_single=set_jaccard(masks), target_j_bag10=set_jaccard(gmasks),
                          n_contacted_exp=int(hit.sum()), n_churners_contacted_exp=int(churn_hit.sum()),
                          unstable_other=(agree1[~hit] < 0.8).mean() if (~hit).any() else np.nan,
@@ -155,13 +165,14 @@ def main():
                 rows.append(r)
                 keep[(s, m)][camp] = hit
                 for clv, g in GRID:
-                    ms = [contact(P[i], camp, clv, g) for i in range(R)]
-                    gs = [contact(x, camp, clv, g) for x in groups]
+                    ms = [contact(P[i], camp, clv, g, tie=tie) for i in range(R)]
+                    gs = [contact(x, camp, clv, g, tie=tie) for x in groups]
                     ps = np.mean([profit(mk, yt, clv, g) for mk in ms])
                     pb = np.mean([profit(mk, yt, clv, g) for mk in gs])
                     sens.append(dict(split=s, model=m, campaign=camp, clv=clv, gamma=g, profit_single=ps,
                                      profit_bag10=pb, gain10=pb - ps, contacted=np.mean([x.mean() for x in gs])))
-            keep[(s, m)].update(ids=sp["explain"], F=label_freq(L, labels), F10=label_freq(L10, labels), labels=labels)
+            keep[(s, m)].update(ids=sp["explain"], F=label_freq(L, labels), F10=label_freq(L10, labels), labels=labels,
+                               ref50=np.searchsorted(labels, ref50), churn=ye == 1)
         print(f"split {s} done", flush=True)
 
     df = pd.DataFrame(rows)
@@ -192,22 +203,30 @@ def main():
                 assert list(ka["labels"]) == list(kb["labels"])
                 ag1 = (ka["F"][ia] * kb["F"][ib]).sum(1)                      # agreement over all refit pairs
                 ag10 = (ka["F10"][ia] * kb["F10"][ib]).sum(1)
+                # offers from split a judged against the consensus action of split b, and vice versa
+                xm1 = np.concatenate([1 - ka["F"][ia, kb["ref50"][ib]], 1 - kb["F"][ib, ka["ref50"][ia]]])
+                xm10 = np.concatenate([1 - ka["F10"][ia, kb["ref50"][ib]], 1 - kb["F10"][ib, ka["ref50"][ia]]])
                 for camp in CAMPAIGNS + ("all",):
                     sel = np.ones(len(common), bool) if camp == "all" else ka[camp][ia] & kb[camp][ib]
                     if sel.any():
-                        cross.append(dict(model=m, s1=a, s2=b, campaign=camp, n=int(sel.sum()),
+                        ch = np.concatenate([sel & ka["churn"][ia], sel & kb["churn"][ib]])
+                        cross.append(dict(model=m, s1=a, s2=b, campaign=camp, n=int(sel.sum()), n_churn=int(ch.sum()),
                                           agree_single=ag1[sel].mean(), agree_bag10=ag10[sel].mean(),
-                                          unstable_single=(ag1[sel] < 0.8).mean(), unstable_bag10=(ag10[sel] < 0.8).mean()))
+                                          unstable_single=(ag1[sel] < 0.8).mean(), unstable_bag10=(ag10[sel] < 0.8).mean(),
+                                          xmismatch_single=xm1[ch].mean() if ch.any() else np.nan,
+                                          xmismatch_bag10=xm10[ch].mean() if ch.any() else np.nan))
     cr = pd.DataFrame(cross)
     cr.to_csv(C.TABLES / "PR_crosssplit_pairs.csv", index=False)
     w = lambda g, c: np.average(g[c], weights=g.n)
-    cs = pd.DataFrame([dict(campaign=camp, model=m, n=int(g.n.sum()),
-                            **{c: w(g, c) for c in ("agree_single", "agree_bag10", "unstable_single", "unstable_bag10")})
+    wc = lambda g, c: np.average(g[c].fillna(0), weights=g.n_churn) if g.n_churn.sum() else np.nan
+    cs = pd.DataFrame([dict(campaign=camp, model=m, n=int(g.n.sum()), n_churn=int(g.n_churn.sum()),
+                            **{c: w(g, c) for c in ("agree_single", "agree_bag10", "unstable_single", "unstable_bag10")},
+                            **{c: wc(g, c) for c in ("xmismatch_single", "xmismatch_bag10")})
                        for (camp, m), g in cr.groupby(["campaign", "model"], sort=False)])
     cs.to_csv(C.TABLES / "PR_crosssplit.csv", index=False)
     pd.set_option("display.width", 250)
     print(out[["campaign", "model", "contacted", "profit_single", "profit_bag10", "gain10", "gain10_lo", "gain10_hi",
-               "target_j_single", "target_j_bag10", "unstable_0.8", "unstable10_0.8", "value_exposed",
+               "target_j_single", "target_j_bag10", "unstable_0.8", "unstable10_0.8", "unstable10_0.7", "unstable10_0.9", "gain10_index_ties",
                "mismatch_single", "mismatch_bag10", "loss_share_single_k0.25", "loss_share_bag10_k0.25"]].round(3).to_string())
     print(cs.round(3).to_string())
 

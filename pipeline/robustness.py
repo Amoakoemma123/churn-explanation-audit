@@ -173,7 +173,7 @@ def sub80():
 # ---------------------------------------------------------------- one explainer, one scale, one value function
 # Reported in the paper: IBM Telco on all 10 splits, Iranian Churn on the first 3 (10 refits x 100 customers each);
 # Cell2Cell was not run. The full Iranian and Cell2Cell runs need several GB of free memory.
-COMMON_SPLITS = tuple(C.OUTER_SEEDS) if C.DATASET == "ibm" else tuple(C.OUTER_SEEDS[:3])
+COMMON_SPLITS = tuple(C.OUTER_SEEDS) if C.DATASET in ("ibm", "iranian") else tuple(C.OUTER_SEEDS[:3])   # Iranian: all 10 since round 14
 COMMON_R, COMMON_N, COMMON_BG = 10, 100, 50
 
 
