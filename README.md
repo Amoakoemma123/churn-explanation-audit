@@ -24,6 +24,11 @@ python robustness.py ties               # robustness checks (also: sub80, common
 python matched_metric.py                # the same stability metrics at the global and per-customer level
 python equal_compute.py                 # averaging vs one model of equal computing cost (IBM, Iranian)
 python profit.py                        # simulated retention campaign: profit and stability of actions
+python robustness.py common_logit       # common explainer on the log-odds scale (then common_gaps_logit)
+python disjoint_halves.py               # averaging across two training halves that share no customer
+python risk_action.py                   # action agreement against predicted risk
+python sign_ranks.py                    # sign agreement by consensus rank; stability away from the base rate
+python ground_truth.py                  # semi-synthetic labels from a known model: are averaged explanations closer to the truth?
 ```
 
 For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same commands (~13 h; output in
@@ -34,9 +39,32 @@ For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same co
 
 Design, settings and output files are described in `pipeline/README.md`; every constant is in `pipeline/config.py`.
 
+## Where each table comes from
+
+All manuscript tables are generated from these CSVs by `fill_tables.py` (folders: `results/` = IBM Telco,
+`results_cell2cell/`, `results_iranian/`; each under `pipeline/`, in `tables/`).
+
+| Table | Source CSV(s) |
+|---|---|
+| 4 (performance) | `performance_summary.csv` |
+| 5 (stability) | `stability_by_split.csv` (means over splits); held-out top-5 inclusion from `matched_metric_summary.csv` (metric `inclusion_ho`, k = 5), not the in-sample `global_top5_inclusion` column |
+| 6 (same metric, both levels) | `matched_metric_summary.csv` |
+| 7 (hypotheses, three datasets) | `hypothesis_tests_holm.csv` (IBM, ten splits; `../tables_k5/` for the five planned splits; Cell2Cell), `family_tests_holm.csv` (Iranian Churn) |
+| 8 (three datasets) | `performance_summary.csv`, `stability_by_split.csv`, `X1_averaging_summary.csv`, `chance_baselines.csv`, `matched_metric_summary.csv` |
+| 9 (campaign) | `PR_profit.csv` (campaign `top-10%`) |
+| S1-S3 (all tests) | as Table 7 |
+| S4 (robustness) | `RB_ties.csv`, `RB_sub80.csv`, `RB_common_explainer.csv` and the other `RB_*.csv` files |
+| S5 (Iranian without `Status`) | `RB_nostatus.csv`, `stability_by_split.csv` |
+| S6 (metric share) | `matched_metric_decomposition.csv` |
+| S7 (campaign, continued) | `PR_profit.csv` (campaigns `top-10%` and `break-even`) |
+
+Numbers quoted only in the text come from the `RB_*`, `PR_*`, `X*_*` and `matched_metric_*` files named in the
+docstring of the script that writes them.
+
 ## What is included
 
-- `pipeline/results/tables/` and `pipeline/results_cell2cell/tables/`: every result table behind the paper's numbers.
+- `pipeline/results/tables/`, `pipeline/results_cell2cell/tables/` and `pipeline/results_iranian/tables/`: every result
+  table behind the paper's numbers.
   Raw per-refit SHAP arrays (about 600 MB) are not included; `run_experiments.py` regenerates them.
 - `pilot/`: the preliminary study that motivated two of the hypotheses (its outer split, seed 42, is excluded from the
   main analysis).
