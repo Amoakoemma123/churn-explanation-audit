@@ -191,7 +191,7 @@ def _decode(Z, cols, cats):
     return df
 
 
-def _common_one(name, params, r, Xtr, ytr, Xexp, bg, cats, seed):
+def _common_one(name, params, r, Xtr, ytr, Xexp, bg, cats, seed, logit=False):
     """Refit exactly as in the main experiment (same bootstrap sample), then explain the PROBABILITY output with
     interventional permutation SHAP against a background shared by all models and refits."""
     import shap
@@ -201,11 +201,14 @@ def _common_one(name, params, r, Xtr, ytr, Xexp, bg, cats, seed):
     prep = make_prep(cols)
     model = make_model(name, params, seed=r).fit(prep.fit_transform(Xtr.iloc[idx]), ytr[idx])
     f = lambda Z: model.predict_proba(prep.transform(_decode(Z, cols, cats)))[:, 1]
+    if logit:   # round 15: the same check on the log-odds scale (linear for LR, native for XGB)
+        g = f
+        f = lambda Z: (lambda q: np.log(q / (1 - q)))(np.clip(g(Z), 1e-6, 1 - 1e-6))
     ex = shap.explainers.Permutation(f, shap.maskers.Independent(bg, max_samples=len(bg)), seed=seed)
     return ex(_codes(Xexp, cats), max_evals=10 * (2 * len(cols) + 1), silent=True).values.astype(np.float32)
 
 
-def common():
+def common(logit=False):
     import json
     X, y, ids = load()
     cats = {c: sorted(X[c].unique()) for c in X.columns if X[c].dtype == object}
@@ -218,10 +221,10 @@ def common():
         for m in MODELS:
             params = json.loads((C.RAW / f"s{s}_{m}_tuning.json").read_text())["params"]
             for r in range(COMMON_R):
-                jobs.append(delayed(_common_one)(m, params, r, Xtr, ytr, Xexp, bg, cats, 0)); keys.append((s, m, r, 0))
-            jobs.append(delayed(_common_one)(m, params, 0, Xtr, ytr, Xexp, bg, cats, 1)); keys.append((s, m, 0, 1))
+                jobs.append(delayed(_common_one)(m, params, r, Xtr, ytr, Xexp, bg, cats, 0, logit)); keys.append((s, m, r, 0))
+            jobs.append(delayed(_common_one)(m, params, 0, Xtr, ytr, Xexp, bg, cats, 1, logit)); keys.append((s, m, 0, 1))
     res = dict(zip(keys, Parallel(n_jobs=C.N_JOBS, verbose=5)(jobs)))
-    np.savez_compressed(C.RAW / "common_explainer.npz", **{f"s{s}_{m}_r{r}_e{e}": v for (s, m, r, e), v in res.items()})
+    np.savez_compressed(C.RAW / f"common_explainer{SUFFIX[logit]}.npz", **{f"s{s}_{m}_r{r}_e{e}": v for (s, m, r, e), v in res.items()})
     rows = []
     for s in COMMON_SPLITS:
         A = {m: np.stack([res[(s, m, r, 0)] for r in range(COMMON_R)]) for m in MODELS}
@@ -238,15 +241,18 @@ def common():
                                    for r in range(COMMON_R)])
             rows.append(dict(split=s, kind="between", pair=f"{a}-{b}", common=j(A), native=j(native)))
     out = pd.DataFrame(rows)
-    out.to_csv(C.TABLES / "RB_common_explainer.csv", index=False)
+    out.to_csv(C.TABLES / f"RB_common_explainer{SUFFIX[logit]}.csv", index=False)
     print(out.groupby(["kind", "pair"]).mean(numeric_only=True).drop(columns="split").round(3).to_string())
 
 
-def common_gaps():
+SUFFIX = {False: "", True: "_logit"}
+
+
+def common_gaps(logit=False):
     """Per split: min(within a, within b) - between(a, b) under the common explainer, with corrected 95% CIs
     (review round 13); plus logistic regression with the common against its own background."""
     from analyze import ci95
-    t = pd.read_csv(C.TABLES / "RB_common_explainer.csv")
+    t = pd.read_csv(C.TABLES / f"RB_common_explainer{SUFFIX[logit]}.csv")
     w = t[t.kind == "within"].pivot(index="split", columns="pair", values="common")
     b = t[t.kind == "between"].pivot(index="split", columns="pair", values="common")
     nat = t[t.kind == "within"].pivot(index="split", columns="pair", values="native")
@@ -258,7 +264,7 @@ def common_gaps():
     rows.append(dict(pair="LR common-native", splits=len(w), gap=(w.LR - nat.LR).mean(), lo=np.nan, hi=np.nan,
                      positive=int((w.LR > nat.LR).sum())))
     out = pd.DataFrame(rows)
-    out.to_csv(C.TABLES / "RB_common_gaps.csv", index=False)
+    out.to_csv(C.TABLES / f"RB_common_gaps{SUFFIX[logit]}.csv", index=False)
     print(out.round(3).to_string())
 
 
@@ -397,5 +403,5 @@ def k5():
 
 
 if __name__ == "__main__":
-    {"ties": ties, "sub80": sub80, "common": common, "common_gaps": common_gaps, "k5": k5, "crosssplit": crosssplit, "crosssplit_ci": crosssplit_ci, "example": example,
+    {"ties": ties, "sub80": sub80, "common": common, "common_gaps": common_gaps, "common_logit": lambda: common(True), "common_gaps_logit": lambda: common_gaps(True), "k5": k5, "crosssplit": crosssplit, "crosssplit_ci": crosssplit_ci, "example": example,
      "bagfloor": bagfloor, "nostatus": nostatus}[sys.argv[1]]()
