@@ -138,7 +138,7 @@ def figure():
 
     here = Path(__file__).resolve().parent
     sets = [("IBM Telco", here / "results" / "tables"), ("Cell2Cell", here / "results_cell2cell" / "tables"),
-            ("Iranian Churn (confirmatory)", here / "results_iranian" / "tables")]
+            ("Iranian Churn (planned)", here / "results_iranian" / "tables")]
     fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.9), sharey=True, gridspec_kw={"wspace": 0.1})
     for ax, (title, T) in zip(axes, sets):
         d = pd.read_csv(T / "X1_averaging_summary.csv")

@@ -12,6 +12,8 @@ real label, and explains the same 500 test customers. Per customer:
   - single: top-3 Jaccard between a refit's explanation and the true top 3 (mean over refits);
   - averaged: top-3 Jaccard between the average of 10 refits and the true top 3 (mean over the two groups of 10);
   - sign: share of refits whose sign matches the true sign, for the customer's true top-3 features;
+  - full_fit: top-3 Jaccard to the truth of one model fitted to the whole training set (no bootstrap), the value that
+    averaging bootstrap refits approaches; averaged20: the average of all 20 refits;
   - self: pairwise top-3 Jaccard among the refits, and between the two averages of 10 (stability, for reference).
 Random forest and decision tree are explained in probability units, the truth in log-odds units; top-3 sets can
 differ between the two scales, which slightly favours LR and XGBoost.
@@ -76,6 +78,12 @@ def main():
                     res = Parallel(n_jobs=C.N_JOBS)(delayed(fit_and_explain)(m, params, 700 + r, True, Xtr, ytr, Xte, Xexp)
                                                     for r in range(R))
                     np.savez_compressed(out, P_test=np.stack([q[0] for q in res]), A=np.stack([q[2] for q in res]))
+                full = C.RAW / f"gt_{truth}_s{s}_{m}_full.npz"
+                if not full.exists():
+                    params = json.loads((C.RAW / f"s{s}_{m}_tuning.json").read_text())["params"]
+                    q = fit_and_explain(m, params, 0, False, Xtr, ytr, Xte, Xexp)
+                    np.savez_compressed(full, P_test=q[0], A=q[2])
+                F = np.load(full)["A"].astype(np.float64)
                 d = np.load(out)
                 A, P = d["A"].astype(np.float64), d["P_test"].astype(np.float64)
                 single = jac_to(A, T)
@@ -86,6 +94,7 @@ def main():
                 sign = (np.sign(A[:, n, ttop]) == np.sign(T[n, ttop])[None]).mean()
                 rows.append(dict(truth=truth, split=s, model=m, single=single.mean(), averaged=avg.mean(),
                                  gain=avg.mean() - single.mean(), sign_true_top3=sign,
+                                 full_fit=jac_to(F[None], T).mean(), averaged20=jac_to(A.mean(0)[None], T).mean(),
                                  self_single=pairwise_jaccard_within(A, 3).mean(),
                                  self_avg=jac_to(G[0][None], G[1]).mean(),
                                  auc_single=np.mean([roc_auc_score(yte, p) for p in P]),
