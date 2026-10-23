@@ -33,7 +33,7 @@ MIN_CHURNERS = 30            # segments with fewer test churners are descriptive
 TENURE_BINS = [-1, 12, 48, 72]
 TENURE_LABELS = ["0-12", "13-48", "49-72"]
 
-N_JOBS = 6                   # 3.3 GB free RAM on this machine: keep workers modest
+N_JOBS = int(os.environ.get("CHURN_N_JOBS", "6").strip())   # 3.3 GB free RAM on this machine: keep workers modest
 
 if DATASET == "ibm":
     DATA = ROOT.parent / "data" / "Telco-Customer-Churn.csv"

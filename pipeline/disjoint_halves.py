@@ -9,10 +9,17 @@ larger on a half) and explain the same 500 test customers. Per split and model:
   - single, within a half: pairwise top-3 Jaccard among the refits of the same half (reference);
   - test ROC-AUC of single refits and of the bagged model of the 10 refits of a half.
 
-    CHURN_DATASET=ibm|cell2cell|iranian python disjoint_halves.py   (resumable; raw/s<seed>_<model>_halves.npz)
-    -> <results>/tables/RB_halves_by_split.csv, RB_halves.csv
+Final-review addition, HALVES_RETUNE=1: each half is treated as a complete study of its own. Hyperparameters are
+re-tuned on the half by the same grid search (minimum leaf sizes halved, because the half has half the customers),
+so nothing tuned on the full training set reaches the halves. On Cell2Cell each half holds about 20,400 customers,
+more than the whole IBM Telco training set.
+
+    CHURN_DATASET=ibm|cell2cell|iranian [HALVES_RETUNE=1] python disjoint_halves.py
+        (resumable; raw/s<seed>_<model>_halves[_rt].npz, raw/s<seed>_<model>_half<h>_tuning.json)
+    -> <results>/tables/RB_halves_by_split.csv, RB_halves.csv (or RB_halves_retuned_by_split.csv, RB_halves_retuned.csv)
 """
 import json
+import os
 
 import numpy as np
 import pandas as pd
@@ -23,10 +30,28 @@ from sklearn.model_selection import StratifiedKFold
 import config as C
 from analyze import ci95, pairwise_jaccard_within, topk_mask
 from data import load, outer_split
-from models import fit_and_explain
+import models
+from models import fit_and_explain, tune
 from stability_aware import bagged_auc
 
 R_HALF = 10
+RETUNE = os.environ.get("HALVES_RETUNE", "").strip() == "1"
+SUFFIX = "_rt" if RETUNE else ""
+if RETUNE:
+    for g in models.GRIDS.values():
+        if "min_samples_leaf" in g:
+            g["min_samples_leaf"] = [max(1, round(v / 2)) for v in g["min_samples_leaf"]]
+
+
+def half_params(s, m, h, Xh, yh):
+    """Tuned hyperparameters for one half (cached), or the split's full-training-set ones without HALVES_RETUNE."""
+    if not RETUNE:
+        return json.loads((C.RAW / f"s{s}_{m}_tuning.json").read_text())["params"]
+    f = C.RAW / f"s{s}_{m}_half{h}_tuning.json"
+    if not f.exists():
+        params, auc, _, _ = tune(m, Xh, yh, s, C.N_JOBS)
+        f.write_text(json.dumps(dict(params=params, cv_auc=auc)))
+    return json.loads(f.read_text())["params"]
 
 
 def jac_between(A, B, k=3):
@@ -47,17 +72,17 @@ def main():
         halves = [h for _, h in StratifiedKFold(2, shuffle=True, random_state=s).split(Xtr, ytr)]
         assert not set(halves[0]) & set(halves[1])
         for m in C.MODELS:
-            out = C.RAW / f"s{s}_{m}_halves.npz"
+            out = C.RAW / f"s{s}_{m}_halves{SUFFIX}.npz"
             if not out.exists():
-                params = json.loads((C.RAW / f"s{s}_{m}_tuning.json").read_text())["params"]
-                jobs = [delayed(fit_and_explain)(m, params, 500 + 100 * h + r, True,
-                                                 Xtr.iloc[halves[h]].reset_index(drop=True), ytr[halves[h]], Xte, Xexp)
+                Xh = [Xtr.iloc[halves[h]].reset_index(drop=True) for h in (0, 1)]
+                params = [half_params(s, m, h, Xh[h], ytr[halves[h]]) for h in (0, 1)]
+                jobs = [delayed(fit_and_explain)(m, params[h], 500 + 100 * h + r, True, Xh[h], ytr[halves[h]], Xte, Xexp)
                         for h in (0, 1) for r in range(R_HALF)]
                 res = Parallel(n_jobs=C.N_JOBS)(jobs)
                 P = np.stack([q[0] for q in res]).reshape(2, R_HALF, -1)
                 A = np.stack([q[2] for q in res]).reshape(2, R_HALF, *res[0][2].shape)
                 np.savez_compressed(out, P_test=P, A=A)
-                print(f"split {s} {m} halves done", flush=True)
+                print(f"split {s} {m} halves{SUFFIX} done", flush=True)
             d = np.load(out)
             P, A = d["P_test"].astype(np.float64), d["A"].astype(np.float64)
             single_x = jac_between(A[0], A[1])
@@ -70,7 +95,7 @@ def main():
                              auc_bag10=np.mean([bagged_auc(P[h], yte, m) for h in (0, 1)])))
     df = pd.DataFrame(rows)
     df["auc_gain"] = df.auc_bag10 - df.auc_single
-    df.to_csv(C.TABLES / "RB_halves_by_split.csv", index=False)
+    df.to_csv(C.TABLES / f"RB_halves{'_retuned' if RETUNE else ''}_by_split.csv", index=False)
     summ = []
     for m, g in df.groupby("model", sort=False):
         r = g.mean(numeric_only=True).drop("split").to_dict()
@@ -80,7 +105,7 @@ def main():
         summ.append(r)
     out = pd.DataFrame(summ)
     out = out[["model"] + [c for c in out.columns if c != "model"]]
-    out.to_csv(C.TABLES / "RB_halves.csv", index=False)
+    out.to_csv(C.TABLES / f"RB_halves{'_retuned' if RETUNE else ''}.csv", index=False)
     pd.set_option("display.width", 200)
     print(out.round(3).to_string())
 

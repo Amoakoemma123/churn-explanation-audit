@@ -26,9 +26,11 @@ python equal_compute.py                 # averaging vs one model of equal comput
 python profit.py                        # simulated retention campaign: profit and stability of actions
 python robustness.py common_logit       # common explainer on the log-odds scale (then common_gaps_logit)
 python disjoint_halves.py               # averaging across two training halves that share no customer
+HALVES_RETUNE=1 python disjoint_halves.py   # the same with every model re-tuned on its own half (run on Cell2Cell)
 python risk_action.py                   # action agreement against predicted risk
 python sign_ranks.py                    # sign agreement by consensus rank; stability away from the base rate
-python ground_truth.py                  # semi-synthetic labels from a known model: are averaged explanations closer to the truth?
+GT_DRAWS=5 python ground_truth.py       # semi-synthetic labels from a known model, five label draws (IBM, Iranian)
+GT_SPLITS=3 python ground_truth.py      # Cell2Cell: one draw on three splits (the larger sample)
 ```
 
 For the Cell2Cell replication, set `CHURN_DATASET=cell2cell` and run the same commands (~13 h; output in
@@ -55,8 +57,9 @@ All manuscript tables are generated from these CSVs by `fill_tables.py` (folders
 | S1-S3 (all tests) | as Table 7 |
 | S4 (robustness) | `RB_ties.csv`, `RB_sub80.csv`, `RB_common_explainer.csv` and the other `RB_*.csv` files |
 | S5 (Iranian without `Status`) | `RB_nostatus.csv`, `stability_by_split.csv` |
-| S6 (metric share) | `matched_metric_decomposition.csv` |
-| S7 (campaign, continued) | `PR_profit.csv` (campaigns `top-10%` and `break-even`) |
+| S6 (semi-synthetic ground truth) | `RB_ground_truth_draws.csv` (IBM Telco, Iranian Churn; five label draws), `RB_ground_truth.csv` (Cell2Cell) |
+| S7 (metric share) | `matched_metric_decomposition.csv` |
+| S8 (campaign, continued) | `PR_profit.csv` (campaigns `top-10%` and `break-even`) |
 
 Numbers quoted only in the text come from the `RB_*`, `PR_*`, `X*_*` and `matched_metric_*` files named in the
 docstring of the script that writes them.
